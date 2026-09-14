@@ -915,76 +915,13 @@ jobs:
             fi
             if ! grep -q 'EXPORT_SYMBOL.*init_ipc_ns' ./ipc/msgutil.c; then
               echo -e '\nEXPORT_SYMBOL_GPL(init_ipc_ns);' >> ./ipc/msgutil.c
-            fi
-          fi
-          echo "拓展 ntsync 支持..."
-          patch -p1 --forward < "${PATCH_DIR}/ntsync/ntsync_base.patch" || true
-          if [[ "$FILE" == oneplus_10r* ]]; then
-            patch -p1 --forward < "${PATCH_DIR}/ntsync/ntsync_compat_android12-5.10_14.patch" || true
-          else
-            patch -p1 --forward < "${PATCH_DIR}/ntsync/ntsync_compat_$([ -f "${PATCH_DIR}/ntsync/ntsync_compat_${KMI}_${ANDROID_SHORT_VERSION}.patch" ] && echo "${KMI}_${ANDROID_SHORT_VERSION}" || echo "${KMI}").patch" || true
-          fi
-          source $REJ_CHECKER
-          check_rejects .
 
-      - name: Apply LZ4_DEV
-        if: ${{ github.event.inputs.LZ4_UPDATE == 'true' }}
-        run: |
-          set -euo pipefail
-          LZ4_REPO="${GITHUB_WORKSPACE}/kernel_workspace/lz4_oplus"
-          cd kernel_workspace/kernel_platform/common
-          . "${LZ4_REPO}/apply_lz4_oplus.sh"
-
-      - name: Apply ZRAM
-        if: startsWith(github.event.inputs.ZRAM, '1/')
-        run: |
-          ZRAM="${{ github.event.inputs.ZRAM }}"
-          if [[ "$(grep -o '/' <<< "$ZRAM" | wc -l)" -lt 2 ]]; then
-            echo "错误: ZRAM 参数缺少必要的分隔符 '/'，格式应为: 总开关0关1开/算法名(前面输入0时无效)/大小(前面输入0时无效)"
-            exit 10
+            # FIX: apply SUSFS KernelSU patch (provides ksu_handle_post_execveat_sucompat)
+            cd "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/KernelSU"
+            patch -p1 < "$GITHUB_WORKSPACE/kernel_workspace/susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || echo "WARN: KernelSU patch may have conflicts"
+            cd "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/common"
           fi
-          # 解析字段：开关状态 / 算法名 / 大小
-          IFS='/' read -r ZRAM_SWSTA ZRAM_ALGO ZRAM_SIZE <<< "$ZRAM"
-          echo "ZRAM_ALGO=$ZRAM_ALGO" >> $GITHUB_ENV
-          echo "ZRAM_ALGO_U=${ZRAM_ALGO^^}" >> $GITHUB_ENV
-          echo "ZRAM_SIZE=$ZRAM_SIZE" >> $GITHUB_ENV
-
-          PATCH_DIR="${GITHUB_WORKSPACE}/kernel_workspace/SukiSU_patch/other/zram/zram_patch/${{ env.KERNEL_VERSION }}"
-          cd kernel_workspace/kernel_platform/common
-          if [[ "$KERNEL_VERSION" == "5.10" && "${CPU}" == mt* ]]; then
-            sed -i 's/select CRYPTO_LZO/depends on CRYPTO_LZO/' ./mm/oplus_mm/hybridswap_zram/Kconfig
-          fi
-          echo "正在打lz4kd补丁"
-          patch -p1 -F 3 < "${PATCH_DIR}/lz4kd.patch" || true
-          echo 'lz4kd_patch完成'
-          echo "正在打lz4k_oplus补丁"
-          patch -p1 -F 3 < "${PATCH_DIR}/lz4k_oplus.patch" || true
-          echo 'lz4k_oplus_patch完成'
-          source $REJ_CHECKER
-          check_rejects .
-
-      - name: Apply SCHED_HMBIRD
-        env:
-          FILE: ${{ github.event.inputs.FILE }}
-        if: ${{ github.event.inputs.SCHED_HMBIRD == 'true' }}
-        run: |
-          cd kernel_workspace/kernel_platform/common
-          CLEAN_FILE="${FILE//_bak/}"
-          for p in ./kernel/sched/hmbird* ./vendor/oplus/kernel/cpu/sched_ext/hmbird*; do
-            [ -d "$p" ] && {
-              echo "源码中风驰代码已经存在，启用二次回退"
-              exit 0
-            }
-          done
-          git clone https://github.com/Numbersf/SCHED_PATCH.git -b $CPU || { echo "❌ CPU 分支不存在，风驰内核暂未支持你的机型，请关闭后重试"; exit 11; }
-          echo "正在拉取风驰补丁"
-          cp ./SCHED_PATCH/fengchi_${CLEAN_FILE}.patch ./
-          if [[ -f "fengchi_${CLEAN_FILE}.patch" ]]; then
-            echo "正在打风驰补丁"
-            dos2unix "fengchi_${CLEAN_FILE}.patch"
-            patch -p1 -F 3 < "fengchi_${CLEAN_FILE}.patch"
-            echo "fengchi_patch完成"
-            source $REJ_CHECKER
+          source $REJ_CHECKER          source $REJ_CHECKER
             check_rejects .
           else
             echo "❌ 未匹配到补丁，风驰内核暂未支持你的机型，请关闭后重试"
