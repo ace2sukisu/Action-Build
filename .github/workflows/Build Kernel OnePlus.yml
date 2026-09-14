@@ -799,10 +799,6 @@ jobs:
             sed -i '0,/^#include "internal.h"/s//#include "internal.h"\n#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT\nextern bool susfs_is_inode_sus_kstat(struct inode *inode, bool *out_is_fuse);\nextern int susfs_sus_kstat_spoof_vfs_statfs(struct inode *inode, struct kstatfs *buf, bool *is_fuse);\n#endif/' fs/statfs.c
             # FIX: susfs.c missing <linux/security.h> for security_sb_statfs()
             sed -i '0,/^#include <linux\/version.h>/s//#include <linux\/version.h>\n#include <linux\/security.h>/' fs/susfs.c
-            # FIX: apply SUSFS KernelSU patch (provides ksu_handle_post_execveat_sucompat definition)
-            cd "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/KernelSU"
-            patch -p1 --forward < "$GITHUB_WORKSPACE/kernel_workspace/susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || echo "WARN: KernelSU patch may have conflicts"
-            cd "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/common"
           fi
           source $REJ_CHECKER
           check_rejects .
