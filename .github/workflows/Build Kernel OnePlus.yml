@@ -794,16 +794,9 @@ jobs:
             echo "正在打susfs补丁"
             patch -p1 < 50_add_susfs_in_gki-${{ env.KANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch || true
             echo "susfs_patch完成"
-            # FIX: susfs patch declares susfs_sus_kstat_spoof_vfs_statfs AFTER its use in statfs.c
-            # C requires declaration before use; move extern decl to top of statfs.c
-            if [ -f fs/statfs.c ]; then
-              sed -i '/^#include "internal.h"/a\
-#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT\
-extern bool susfs_is_inode_sus_kstat(struct inode *inode, bool *out_is_fuse);\
-extern int susfs_sus_kstat_spoof_vfs_statfs(struct inode *inode, struct kstatfs *buf, bool *is_fuse);\
-#endif' fs/statfs.c
-              echo "statfs.c extern decl fix applied"
-            fi
+            # FIX: susfs patch declares susfs_sus_kstat_spoof_vfs_statfs AFTER use in statfs.c
+            # Insert extern decl after #include "internal.h" (single-line sed, YAML-safe)
+            sed -i '0,/^#include "internal.h"/s//#include "internal.h"\n#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT\nextern bool susfs_is_inode_sus_kstat(struct inode *inode, bool *out_is_fuse);\nextern int susfs_sus_kstat_spoof_vfs_statfs(struct inode *inode, struct kstatfs *buf, bool *is_fuse);\n#endif/' fs/statfs.c
           fi
           source $REJ_CHECKER
           check_rejects .
