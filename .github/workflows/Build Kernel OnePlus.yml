@@ -730,6 +730,11 @@ jobs:
           sed -i '/^KSU_VERSION[[:space:]]*:=/s|:= .*|:= 40930|' kernel/Makefile
           grep -n '^KSU_VERSION[[:space:]]*:=' kernel/Makefile || true
 
+          # FIX: bump KERNEL_SU_UAPI_VERSION 2 -> 4 so Manager (uapi=4) starts ksud
+          # MainActivity checks kernelUAPIVersion == managerUAPIVersion before starting ksud
+          sed -i 's/DECLARE(__u32, KERNEL_SU_UAPI_VERSION, 2)/DECLARE(__u32, KERNEL_SU_UAPI_VERSION, 4)/' kernel/include/uapi/supercall.h
+          grep -n 'KERNEL_SU_UAPI_VERSION' kernel/include/uapi/supercall.h || true
+
           KSU_VERSION=$(expr $(git rev-list --count "$KSU_MANAGER_BRANCH" 2>/dev/null || echo 13000) + 37185)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
 
