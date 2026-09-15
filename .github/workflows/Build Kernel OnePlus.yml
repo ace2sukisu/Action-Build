@@ -726,6 +726,10 @@ jobs:
             sed -i "s|^KSU_VERSION_API := .*|KSU_VERSION_API := $ESC_KSU_VERSION_TAG|" kernel/Makefile
           fi
 
+          # FIX: force KSU version to 40930 so Manager (>=40922-4) accepts the kernel
+          sed -i '/^KSU_VERSION[[:space:]]*:=/s|:= .*|:= 40930|' kernel/Makefile
+          grep -n '^KSU_VERSION[[:space:]]*:=' kernel/Makefile || true
+
           KSU_VERSION=$(expr $(git rev-list --count "$KSU_MANAGER_BRANCH" 2>/dev/null || echo 13000) + 37185)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
 
